@@ -23,12 +23,12 @@ void initialize(string filename, string randfile){
 			stringstream lineStream(line);
 			string token;
 			vector<int> processArgs;
-			int index = 0; //to compare two processes with the same arrival time
+			int pid = 0; //to compare two processes with the same arrival time
 			while(lineStream >> token){
 				processArgs.push_back(stoi(token, nullptr));
 			}
-			Process * newProcess = new Process(index, processArgs[0], processArgs[1], processArgs[2], processArgs[3]);
-			index++;
+			Process * newProcess = new Process(pid, processArgs[0], processArgs[1], processArgs[2], processArgs[3]);
+			pid++;
 		}
 	} else {
 		cout << "Could not open file: " << filename << endl;

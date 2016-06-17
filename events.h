@@ -1,34 +1,83 @@
 #include <string>
 
 class Event {
+	int timestamp;
+	int pid;
+	std::string eventType;
+
 	public:
-		int timestamp;
-		Process * process;
-		std::string eventName;
 		Event * nextEvent;
+		Event(){};
+		Event(int timestamp, int pid, std::string eventType){
+			setTimestamp(timestamp);
+			setProcessID(pid);
+			seteventType(eventType);
+		}
+		void setTimestamp(int timestamp){this->timestamp = timestamp;}
+		void setProcessID(int pid){this->pid = pid;}
+		void seteventType(std::string eventType){this->eventType = eventType;}
+		int getTimestamp(){return this->timestamp;}
+		int getProcessID(){return this->pid;}
+		std::string geteventType(){return this->eventType;}
 };
 
 class EventList {
+	Event * head;
+	int numEvents;
+
 	public:
-		Event * head;
-		Event * tail;
-		
 		EventList() {
 			head = NULL;
-			tail = NULL;
-		};
+			numEvents = 0;
+		}
+		~EventList(){
+			if(numEvents > 0){
+				Event * cur = head;
+				Event * next;
+				do {
+					next = cur->nextEvent;
+					delete cur;
+					cur = next;
+				} while(cur);
+			}
+		}
 
-		void putEvent(char * timestamp, Process *, char * eventName){
-			//??case for list is empty - head == NULL
-			//??put at tail? - they should be in order
-			//??make sure char * == string
-		};
+		//sorted insert
+		void putEvent(int timestamp, int pid, std::string eventType){
+			Event * newEvent = new Event(timestamp, pid, eventType);
+			Event * cur;
 
-		// Process * getEvent(){
-		// 	//??next relative to what?
-		// };
+			if(this->isEmpty() || head->getTimestamp() > newEvent->getTimestamp()){
+				newEvent->nextEvent = head;
+				head = newEvent;
+			} else {
+				cur = head;
+				while(cur->nextEvent && cur->nextEvent->getTimestamp() < newEvent->getTimestamp()){
+					cur = cur->nextEvent;
+				}
+				newEvent->nextEvent = cur->nextEvent;
+				cur->nextEvent = newEvent;
+			}
+			numEvents++;
+		}
 
-		// char * getNextTimestamp(){
+		Event getEvent(){
+			Event curEvent = *head;
+			Event * temp = head;
+			head = head->nextEvent;
+			delete temp;
+			return curEvent;
+		}
 
-		// };
+		int getNextTimestamp(){
+			return head->getTimestamp();
+		}
+
+		bool isEmpty(){
+			if(numEvents == 0){
+				return true;
+			} else {
+				return false;
+			}
+		}
 };

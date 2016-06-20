@@ -1,24 +1,31 @@
 #include <string>
 
+typedef enum transitionState {
+	TRANS_TO_READY,
+	TRANS_TO_RUN,
+	TRANS_TO_BLOCK,
+	TRANS_TO_PREEMPT
+} transitionState;
+
 class Event {
 	int timestamp;
 	int pid;
-	std::string eventType;
+	transitionState transition;
 
 	public:
 		Event * nextEvent;
 		Event(){};
-		Event(int timestamp, int pid, std::string eventType){
+		Event(int timestamp, int pid, transitionState transition){
 			setTimestamp(timestamp);
 			setProcessID(pid);
-			seteventType(eventType);
+			setTransition(transition);
 		}
 		void setTimestamp(int timestamp){this->timestamp = timestamp;}
 		void setProcessID(int pid){this->pid = pid;}
-		void seteventType(std::string eventType){this->eventType = eventType;}
+		void setTransition(transitionState transition){this->transition = transition;}
 		int getTimestamp(){return this->timestamp;}
 		int getProcessID(){return this->pid;}
-		std::string geteventType(){return this->eventType;}
+		transitionState getTransition(){return this->transition;}
 };
 
 class EventList {
@@ -27,7 +34,7 @@ class EventList {
 
 	public:
 		EventList() {
-			head = NULL;
+			head = nullptr;
 			numEvents = 0;
 		}
 		~EventList(){
@@ -43,8 +50,8 @@ class EventList {
 		}
 
 		//sorted insert
-		void putEvent(int timestamp, int pid, std::string eventType){
-			Event * newEvent = new Event(timestamp, pid, eventType);
+		void putEvent(int timestamp, int pid, transitionState transition){
+			Event * newEvent = new Event(timestamp, pid, transition);
 			Event * cur;
 
 			if(this->isEmpty() || head->getTimestamp() > newEvent->getTimestamp()){
@@ -61,11 +68,16 @@ class EventList {
 			numEvents++;
 		}
 
-		Event getEvent(){
-			Event curEvent = *head;
-			Event * temp = head;
-			head = head->nextEvent;
-			delete temp;
+		//memory leak! remember to delete event from scheduler
+		Event * getEvent(){
+			Event * curEvent;
+			if(this->isEmpty()){
+				curEvent = nullptr;
+			} else {
+				curEvent = head;
+				head = head->nextEvent;
+				numEvents--;
+			}
 			return curEvent;
 		}
 

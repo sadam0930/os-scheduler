@@ -17,6 +17,7 @@ class Process {
 
 	public:
 		Process * nextProcess;
+		Process * prevProcess;
 		Process(){}
 		Process(int pid, int AT, int TC, int CB, int IO){
 			setPid(pid);
@@ -26,6 +27,7 @@ class Process {
 			setIOBurst(IO);
 			currentState = CREATED;
 			nextProcess = nullptr;
+			prevProcess = nullptr;
 		}
 		void setPid(int pid){ this->pid = pid; }
 		void setArrivalTime(int AT){ this->AT = AT; }
@@ -42,11 +44,11 @@ class Process {
 };
 
 class ProcessList {
-	Process * head;
-	Process * tail;
-	int numProcesses;
-	
 	public:
+		Process * head;
+		Process * tail;
+		int numProcesses;
+
 		ProcessList(){
 			head = nullptr;
 			tail = head;
@@ -64,15 +66,17 @@ class ProcessList {
 			}
 		}
 
+		//for initialization of full process list
 		void addProcess(int pid, int AT, int TC, int CB, int IO){
 			Process * newProcess = new Process(pid, AT, TC, CB, IO);
 
 			if(this->isEmpty()){
-				head = newProcess;
-				tail = head;
+				this->head = newProcess;
+				this->tail = this->head;
 			} else {
-				tail->nextProcess = newProcess;
-				tail = newProcess;
+				newProcess->prevProcess = this->tail;
+				this->tail->nextProcess = newProcess;
+				this->tail = newProcess;
 			}
 			numProcesses++;
 		}

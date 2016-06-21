@@ -6,15 +6,25 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "process.h"
-#include "events.h"
 #include "scheduler.h"
 
 using namespace std;
 
-void initialize(string filename, string randfile, EventList * events, ProcessList * processList){
-	//read file
+//global
+vector<int> randvals; 
+int ofs = 0;
+int myrandom(int burst) { 
+	int ranNum = 1 + (randvals[ofs] % burst);
+	ofs++;
+	if(ofs == randvals.size()-1){
+		ofs = 0;
+	}
+	return ranNum; 
+}
+
+void initialize(string filename, string randfile, EventList * events, Scheduler * scheduler){
 	ifstream f;
+	//read input file
 	f.open(filename);
 	if(f.is_open()){
 		// Each line in the file is a new process
@@ -27,7 +37,7 @@ void initialize(string filename, string randfile, EventList * events, ProcessLis
 			while(lineStream >> token){
 				processArgs.push_back(stoi(token, nullptr));
 			}
-			processList->addProcess(pid, processArgs[0], processArgs[1], processArgs[2], processArgs[3]);
+			scheduler->putProcess(pid, processArgs[0], processArgs[1], processArgs[2], processArgs[3]);
 			events->putEvent(processArgs[0], pid, TRANS_TO_READY);
 			pid++;
 		}
@@ -35,10 +45,26 @@ void initialize(string filename, string randfile, EventList * events, ProcessLis
 		cout << "Could not open file: " << filename << endl;
 	}
 	f.close();
+
+	//read randfile
+	f.open(randfile);
+	if(f.is_open()){
+		string line;
+		//First line is the count of random numbers in the file
+		getline(f, line); //throw it away
+		//Each line in the file is a random number
+		while(getline(f, line)){
+			// printf("%s", line);
+			randvals.push_back(stoi(line, nullptr));
+		}
+	} else {
+		cout << "Could not open file: " << randfile << endl;
+	}
+	f.close();
 }
 
-void start_simulation(EventList * events, ProcessList * processList, Scheduler * scheduler){
-
+void start_simulation(EventList * events, Scheduler * scheduler){
+	int simTime = 0;
 }
 
 //begin scheduler simulation
@@ -70,10 +96,10 @@ int main(int argc, char **argv){
 	string randfile = argv[optind+1];
 
 	EventList * events = new EventList();
-	ProcessList * processList = new ProcessList();
+	// ProcessList * allProcesses = new ProcessList();
 
-	initialize(filename, randfile, events, processList);
-	start_simulation(events, processList, scheduler);
+	initialize(filename, randfile, events, scheduler);
+	start_simulation(events, scheduler);
 
 	return 0;
 }

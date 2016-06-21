@@ -67,7 +67,7 @@ class ProcessList {
 		}
 
 		//for initialization of full process list
-		void addProcess(int pid, int AT, int TC, int CB, int IO){
+		/*void addProcess(int pid, int AT, int TC, int CB, int IO){
 			Process * newProcess = new Process(pid, AT, TC, CB, IO);
 
 			if(this->isEmpty()){
@@ -79,7 +79,7 @@ class ProcessList {
 				this->tail = newProcess;
 			}
 			numProcesses++;
-		}
+		}*/
 
 		Process * findProcess(int pid){
 			Process * foundProcess = nullptr;

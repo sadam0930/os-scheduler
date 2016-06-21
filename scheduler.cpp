@@ -43,6 +43,7 @@ void initialize(string filename, string randfile, EventList * events, Scheduler 
 		}
 	} else {
 		cout << "Could not open file: " << filename << endl;
+		exit(1);
 	}
 	f.close();
 
@@ -54,11 +55,12 @@ void initialize(string filename, string randfile, EventList * events, Scheduler 
 		getline(f, line); //throw it away
 		//Each line in the file is a random number
 		while(getline(f, line)){
-			// printf("%s", line);
+			cout << line << endl;
 			randvals.push_back(stoi(line, nullptr));
 		}
 	} else {
 		cout << "Could not open file: " << randfile << endl;
+		exit(1);
 	}
 	f.close();
 }

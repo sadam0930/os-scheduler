@@ -114,7 +114,7 @@ void start_simulation(EventList * events, Scheduler * scheduler, bool refoutv){
 				break;
 			case TRANS_TO_RUN:
 				curEvent->process->rCB = myrandom(curEvent->process->getCPUBurst());
-				if(curEvent->process->remExTime < curEvent->process->rCB){
+				if(curEvent->process->remExTime <= curEvent->process->rCB){
 					//next CPU cycle is last cycle
 					curEvent->process->rCB = curEvent->process->remExTime;
 					events->putEvent((curTime + curEvent->process->rCB), curEvent->process, TRANS_TO_DONE);

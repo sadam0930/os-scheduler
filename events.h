@@ -1,30 +1,56 @@
 #include <string>
+#include <iostream>
 
 typedef enum transitionState {
 	TRANS_TO_READY,
 	TRANS_TO_RUN,
 	TRANS_TO_BLOCK,
-	TRANS_TO_PREEMPT
+	TRANS_TO_PREEMPT,
+	TRANS_TO_DONE
 } transitionState;
+
+std::string transitionToString(transitionState ts){
+	std::string str;
+	switch(ts){
+		case TRANS_TO_READY:
+			str = "READY";
+			break;
+		case TRANS_TO_RUN:
+			str = "RUNNG";
+			break;
+		case TRANS_TO_BLOCK:
+			str = "BLOCK";
+			break;
+		case TRANS_TO_PREEMPT:
+			str = "PREEMPT";
+			break;
+		case TRANS_TO_DONE:
+			str = "Done";
+			break;
+		default:
+			break;
+	}
+	return str;
+}
 
 class Event {
 	int timestamp;
-	int pid;
 	transitionState transition;
 
 	public:
+		Process * process;
 		Event * nextEvent;
 		Event(){};
-		Event(int timestamp, int pid, transitionState transition){
+		Event(int timestamp, Process * process, transitionState transition){
 			setTimestamp(timestamp);
-			setProcessID(pid);
+			this->process = process;
 			setTransition(transition);
 		}
 		void setTimestamp(int timestamp){this->timestamp = timestamp;}
-		void setProcessID(int pid){this->pid = pid;}
+		// void setProcess(Process * process){this->process = process;}
 		void setTransition(transitionState transition){this->transition = transition;}
 		int getTimestamp(){return this->timestamp;}
-		int getProcessID(){return this->pid;}
+		// Process * getProcess(){return this->process;}
 		transitionState getTransition(){return this->transition;}
 };
 
@@ -50,8 +76,8 @@ class EventList {
 		}
 
 		//sorted insert
-		void putEvent(int timestamp, int pid, transitionState transition){
-			Event * newEvent = new Event(timestamp, pid, transition);
+		void putEvent(int timestamp, Process * process, transitionState transition){
+			Event * newEvent = new Event(timestamp, process, transition);
 			Event * cur;
 
 			if(this->isEmpty() || head->getTimestamp() > newEvent->getTimestamp()){
@@ -59,7 +85,7 @@ class EventList {
 				head = newEvent;
 			} else {
 				cur = head;
-				while(cur->nextEvent && cur->nextEvent->getTimestamp() < newEvent->getTimestamp()){
+				while(cur->nextEvent && cur->nextEvent->getTimestamp() <= newEvent->getTimestamp()){
 					cur = cur->nextEvent;
 				}
 				newEvent->nextEvent = cur->nextEvent;
@@ -82,7 +108,11 @@ class EventList {
 		}
 
 		int getNextTimestamp(){
-			return head->getTimestamp();
+			if(numEvents == 0){
+				return -1;
+			} else {
+				return head->getTimestamp();
+			}
 		}
 
 		bool isEmpty(){

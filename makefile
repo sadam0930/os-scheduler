@@ -1,2 +1,2 @@
 scheduler: scheduler.cpp scheduler.h process.h events.h
-	g++ -c scheduler.cpp
+	g++ -Wall -o scheduler scheduler.cpp

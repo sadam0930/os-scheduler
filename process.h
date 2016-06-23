@@ -1,3 +1,5 @@
+#include <string>
+
 typedef enum processState {
 	CREATED,
 	READY,
@@ -6,6 +8,30 @@ typedef enum processState {
 	DONE
 } processState;
 
+std::string stateToString(processState ps){
+	std::string str;
+	switch(ps){
+		case CREATED:
+			str = "CREATED";
+			break;
+		case READY:
+			str = "READY";
+			break;
+		case RUNNING:
+			str = "RUNNG";
+			break;
+		case BLOCKED:
+			str = "BLOCKED";
+			break;
+		case DONE:
+			str = "Done";
+			break;
+		default:
+			break;
+	}
+	return str;
+}
+
 class Process {
 	/*
 	A process is characterized by 4 parameters:
@@ -13,34 +39,44 @@ class Process {
 	*/
 	int AT, TC, CB, IO;
 	int pid;
-	processState currentState;
 
 	public:
+		//Each Process is a node in a linked list
 		Process * nextProcess;
 		Process * prevProcess;
+		
+		processState currentState;
+		int timeInPreviousState;
+		int stateTimeStamp;
+		int FT, TT, IT, CW, PRIO; //Finish Time, Turnaround time, IO time, CPU Wait, Static Priority
+		int dynamicPrio;
+		int remExTime;
+		int rCB, rIO; //random CPU/IO Burst
+		
 		Process(){}
-		Process(int pid, int AT, int TC, int CB, int IO){
+		Process(int pid, int AT, int TC, int CB, int IO, int staticPrio){
 			setPid(pid);
 			setArrivalTime(AT);
 			setTotalCPUTime(TC);
 			setCPUBurst(CB);
 			setIOBurst(IO);
-			currentState = CREATED;
-			nextProcess = nullptr;
-			prevProcess = nullptr;
+			this->currentState = CREATED;
+			this->nextProcess = nullptr;
+			this->prevProcess = nullptr;
+			this->PRIO = staticPrio;
+			this->dynamicPrio = staticPrio-1;
+			this->stateTimeStamp = AT;
 		}
 		void setPid(int pid){ this->pid = pid; }
 		void setArrivalTime(int AT){ this->AT = AT; }
-		void setTotalCPUTime(int TC){ this->TC = TC; }
+		void setTotalCPUTime(int TC){ this->TC = TC; this->remExTime = TC;}
 		void setCPUBurst(int CB){ this->CB = CB; }
 		void setIOBurst(int IO){ this->IO = IO; }
-		void setCurrentState(processState state){ this->currentState = state; }
 		int getPid(){ return this->pid; }
 		int getArrivalTime(){ return this->AT; }
 		int getTotalCPUTime(){ return this->TC; }
 		int getCPUBurst(){ return this->CB; }
 		int getIOBurst(){ return this->IO; }
-		processState getCurrentState(){ return this->currentState; }
 };
 
 class ProcessList {
@@ -65,21 +101,6 @@ class ProcessList {
 				} while(cur);
 			}
 		}
-
-		//for initialization of full process list
-		/*void addProcess(int pid, int AT, int TC, int CB, int IO){
-			Process * newProcess = new Process(pid, AT, TC, CB, IO);
-
-			if(this->isEmpty()){
-				this->head = newProcess;
-				this->tail = this->head;
-			} else {
-				newProcess->prevProcess = this->tail;
-				this->tail->nextProcess = newProcess;
-				this->tail = newProcess;
-			}
-			numProcesses++;
-		}*/
 
 		Process * findProcess(int pid){
 			Process * foundProcess = nullptr;

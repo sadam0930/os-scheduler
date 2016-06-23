@@ -22,7 +22,7 @@ int myrandom(int burst) {
 	return ranNum; 
 }
 
-void initialize(string filename, string randfile, EventList * events, Scheduler * scheduler){
+void initialize(string filename, string randfile, EventList * events, Scheduler * scheduler, vector<Process *> * allProcesses){
 	ifstream f;
 	//read randfile
 	f.open(randfile);
@@ -32,7 +32,6 @@ void initialize(string filename, string randfile, EventList * events, Scheduler 
 		getline(f, line); //throw it away
 		//Each line in the file is a random number
 		while(getline(f, line)){
-			// cout << line << endl;
 			randvals.push_back(stoi(line, nullptr));
 		}
 	} else {
@@ -55,8 +54,8 @@ void initialize(string filename, string randfile, EventList * events, Scheduler 
 				processArgs.push_back(stoi(token, nullptr));
 			}
 			Process * newProcess = new Process(pid, processArgs[0], processArgs[1], processArgs[2], processArgs[3], myrandom(4));
+			allProcesses->push_back(newProcess);
 			events->putEvent(processArgs[0], newProcess, TRANS_TO_READY);
-			// scheduler->putProcess(newProcess);
 			pid++;
 		}
 	} else {
@@ -89,8 +88,9 @@ void printVerbose(bool enabled, Event * event){
 	}
 }
 
-void start_simulation(EventList * events, Scheduler * scheduler, bool refoutv){
+int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv){
 	int curTime = 0;
+	int lastEventFinish;
 	Event * curEvent;
 	bool callScheduler = false;
 	Process * curRunningProcess = nullptr;
@@ -115,7 +115,7 @@ void start_simulation(EventList * events, Scheduler * scheduler, bool refoutv){
 			case TRANS_TO_RUN:
 				curEvent->process->rCB = myrandom(curEvent->process->getCPUBurst());
 				if(curEvent->process->remExTime <= curEvent->process->rCB){
-					//next CPU cycle is last cycle
+					//next CPU cycle is last cycle for this process
 					curEvent->process->rCB = curEvent->process->remExTime;
 					events->putEvent((curTime + curEvent->process->rCB), curEvent->process, TRANS_TO_DONE);
 				} else {
@@ -123,6 +123,8 @@ void start_simulation(EventList * events, Scheduler * scheduler, bool refoutv){
 				}
 
 				printVerbose(refoutv, curEvent);
+				//tally CPU wait time, time spent in ready
+				(curEvent->process->CW) += curEvent->process->timeInPreviousState;
 				curEvent->process->currentState = RUNNING;
 				curEvent->process->stateTimeStamp = curTime;
 
@@ -148,9 +150,11 @@ void start_simulation(EventList * events, Scheduler * scheduler, bool refoutv){
 			case TRANS_TO_DONE:
 				printVerbose(refoutv, curEvent);
 				curEvent->process->FT = curTime;
+				(curEvent->process->TT) = curEvent->process->FT - curEvent->process->getArrivalTime();
 				//free current running process
 				curRunningProcess = nullptr;
 				callScheduler = true;
+				lastEventFinish = curTime; //overwrite until it's over
 				break;
 		}
 
@@ -171,6 +175,43 @@ void start_simulation(EventList * events, Scheduler * scheduler, bool refoutv){
 			}
 		}
 	}
+	return lastEventFinish;
+}
+
+void print_proc_data(vector<Process *> * allProcesses, Scheduler * scheduler){
+	switch(scheduler->schedulerType){
+		case 'F': cout<<"FCFS"<<endl; break;
+        case 'L': cout<<"LCFS"<<endl; break;
+        case 'S': cout<<"SJF"<<endl; break;
+        case 'R':
+            // cout<<"RR "<<scheduler->getQuantum()<<endl;
+            break;
+        case 'P':
+            // cout<<"PRIO "<<scheduler->getQuantum()<<endl;
+            break;
+        default: break;
+	}
+
+	unsigned long size = allProcesses->size();
+	for (int i=0; i<size; i++) {
+		printf("%04d: %4d %4d %4d %4d %1d | %5d %5d %5d %5d\n",
+               allProcesses->at(i)->getPid(),
+               allProcesses->at(i)->getArrivalTime(),
+               allProcesses->at(i)->getTotalCPUTime(),
+               allProcesses->at(i)->getCPUBurst(),
+               allProcesses->at(i)->getIOBurst(),
+               allProcesses->at(i)->PRIO,
+               allProcesses->at(i)->FT,
+               allProcesses->at(i)->TT,
+               allProcesses->at(i)->IT,
+               allProcesses->at(i)->CW
+               );
+	}
+}
+
+void print_sum(int lastEventFinish, double cpuUtil, double ioUtil, double avgTurn, double avgCW, double throughput){
+	printf("SUM: %d %.2lf %.2lf %.2lf %.2lf %.3lf\n",
+           lastEventFinish, cpuUtil, ioUtil, avgTurn, avgCW, throughput);
 }
 
 //begin scheduler simulation
@@ -185,7 +226,7 @@ int main(int argc, char **argv){
                 sscanf(optarg + 1, "%d", &quant);
             } else {quant = 9999;}
             if (optarg[0] == 'F'){
-            	scheduler = new FCFS_Scheduler();
+            	scheduler = new FCFS_Scheduler(optarg[0]);
             } else if (optarg[0] == 'L'){
 
             } else if (optarg[0] == 'P'){
@@ -206,9 +247,30 @@ int main(int argc, char **argv){
 	string randfile = argv[optind+1];
 
 	EventList * events = new EventList();
+	vector<Process *> * allProcesses = new vector<Process *>();
 
-	initialize(filename, randfile, events, scheduler);
-	start_simulation(events, scheduler, refoutv);
+	initialize(filename, randfile, events, scheduler, allProcesses);
+	int totalTime = start_simulation(events, scheduler, refoutv);
+	print_proc_data(allProcesses, scheduler);
+
+	//computer some overall statistics
+	double cpuUtil, ioUtil, avgTurn, avgCW, throughput;
+	cpuUtil = ioUtil = avgTurn = avgCW = throughput = 0;
+	
+	unsigned long numProcesses = allProcesses->size();
+	for (int i=0; i < numProcesses; i++) {
+        cpuUtil += allProcesses->at(i)->getTotalCPUTime();
+        ioUtil += allProcesses->at(i)->IT;
+        avgTurn += allProcesses->at(i)->TT;
+        avgCW += allProcesses->at(i)->CW;
+    }
+    cpuUtil = ((double)cpuUtil*100)/(double)totalTime;
+    ioUtil = ((double)ioUtil*100)/(double)totalTime; //wrong
+    avgTurn = (double)avgTurn/(double)numProcesses;
+    avgCW = (double)avgCW/(double)numProcesses;
+    throughput = ((double)numProcesses*100)/(double)totalTime;
+
+	print_sum(totalTime, cpuUtil, ioUtil, avgTurn, avgCW, throughput);
 
 	return 0;
 }

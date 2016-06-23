@@ -3,9 +3,11 @@
 
 class Scheduler {		
 	public:
+		char schedulerType;
 		ProcessList * runQueue;
-		Scheduler(){
+		Scheduler(char schedulerType){
 			this->runQueue = new ProcessList();
+			this->schedulerType = schedulerType;
 		}
 		//implementation will differ based on the scheduling algorithm
 		virtual void putProcess(Process * process) =0;
@@ -15,7 +17,7 @@ class Scheduler {
 //differentiate how to getProcess between scheduler algorithms
 class FCFS_Scheduler: public Scheduler {
 	public:
-		// FCFS_Scheduler() : Scheduler() {}
+		FCFS_Scheduler(char schedulerType) : Scheduler(schedulerType) {}
 		
 		//add Process to end of run queue
 		void putProcess(Process * process){

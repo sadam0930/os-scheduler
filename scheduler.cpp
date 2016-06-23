@@ -88,7 +88,7 @@ void printVerbose(bool enabled, Event * event){
 	}
 }
 
-int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv){
+int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv, vector<pair<int, int> *> * allIOs){
 	int curTime = 0;
 	int lastEventFinish;
 	Event * curEvent;
@@ -130,8 +130,14 @@ int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv){
 
 				break;
 			case TRANS_TO_BLOCK:
+			{ //create new scope for pair initialization
 				curEvent->process->rIO = myrandom(curEvent->process->getIOBurst());
 				(curEvent->process->remExTime) -= curEvent->process->rCB;
+
+				//track IO start and end times for summary statistics
+				pair<int, int> * newIO = new pair<int, int>(curTime, (curTime + curEvent->process->rIO));
+            	allIOs->push_back(newIO);
+
 				printVerbose(refoutv, curEvent);
 				curEvent->process->currentState = BLOCKED;
 				curEvent->process->stateTimeStamp = curTime;
@@ -141,6 +147,7 @@ int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv){
 				callScheduler = true;
 
 				break;
+			}
 			case TRANS_TO_PREEMPT:
 				printVerbose(refoutv, curEvent);
 				curEvent->process->currentState = READY;
@@ -214,6 +221,10 @@ void print_sum(int lastEventFinish, double cpuUtil, double ioUtil, double avgTur
            lastEventFinish, cpuUtil, ioUtil, avgTurn, avgCW, throughput);
 }
 
+int compareIO(pair<int, int> * p1, pair<int, int> * p2){
+    return p1->first < p2->first;
+}
+
 //begin scheduler simulation
 int main(int argc, char **argv){
 	int opt, quant;
@@ -248,9 +259,10 @@ int main(int argc, char **argv){
 
 	EventList * events = new EventList();
 	vector<Process *> * allProcesses = new vector<Process *>();
+	vector<pair<int, int>*> * allIOs = new vector<pair<int, int>*>;
 
 	initialize(filename, randfile, events, scheduler, allProcesses);
-	int totalTime = start_simulation(events, scheduler, refoutv);
+	int totalTime = start_simulation(events, scheduler, refoutv, allIOs);
 	print_proc_data(allProcesses, scheduler);
 
 	//computer some overall statistics
@@ -260,15 +272,31 @@ int main(int argc, char **argv){
 	unsigned long numProcesses = allProcesses->size();
 	for (int i=0; i < numProcesses; i++) {
         cpuUtil += allProcesses->at(i)->getTotalCPUTime();
-        ioUtil += allProcesses->at(i)->IT;
         avgTurn += allProcesses->at(i)->TT;
         avgCW += allProcesses->at(i)->CW;
     }
     cpuUtil = ((double)cpuUtil*100)/(double)totalTime;
-    ioUtil = ((double)ioUtil*100)/(double)totalTime; //wrong
     avgTurn = (double)avgTurn/(double)numProcesses;
     avgCW = (double)avgCW/(double)numProcesses;
     throughput = ((double)numProcesses*100)/(double)totalTime;
+
+    //compute time at least one process is in IO
+    //must remove overlap
+    //first sort all IOs
+    sort(allIOs->begin(), allIOs->end(), compareIO);
+    int tempEnd = 0;
+    for (int j=0; j < allIOs->size(); j++) {
+        if (allIOs->at(j)->first < tempEnd) {
+            if (allIOs->at(j)->second > tempEnd) {
+                ioUtil += allIOs->at(j)->second - tempEnd;
+                tempEnd = allIOs->at(j)->second;
+            }
+        } else {
+            ioUtil += allIOs->at(j)->second - allIOs->at(j)->first;
+            tempEnd = allIOs->at(j)->second;
+        }
+    }
+    ioUtil = ((double)ioUtil*100)/(double)totalTime;
 
 	print_sum(totalTime, cpuUtil, ioUtil, avgTurn, avgCW, throughput);
 

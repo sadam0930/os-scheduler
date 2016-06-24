@@ -104,7 +104,7 @@ int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv, ve
 				printVerbose(refoutv, curEvent);
 				//tally IO time before changing the state
 				if(curEvent->process->currentState == BLOCKED){
-					(curEvent->process->IT) += curEvent->process->timeInPreviousState;
+					curEvent->process->IT = curEvent->process->IT + curEvent->process->timeInPreviousState;
 				}
 				curEvent->process->currentState = READY;
 				curEvent->process->stateTimeStamp = curTime;
@@ -124,7 +124,7 @@ int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv, ve
 
 				printVerbose(refoutv, curEvent);
 				//tally CPU wait time, time spent in ready
-				(curEvent->process->CW) += curEvent->process->timeInPreviousState;
+				curEvent->process->CW = curEvent->process->CW + curEvent->process->timeInPreviousState;
 				curEvent->process->currentState = RUNNING;
 				curEvent->process->stateTimeStamp = curTime;
 
@@ -216,55 +216,11 @@ void print_proc_data(vector<Process *> * allProcesses, Scheduler * scheduler){
 	}
 }
 
-void print_sum(int lastEventFinish, double cpuUtil, double ioUtil, double avgTurn, double avgCW, double throughput){
-	printf("SUM: %d %.2lf %.2lf %.2lf %.2lf %.3lf\n",
-           lastEventFinish, cpuUtil, ioUtil, avgTurn, avgCW, throughput);
-}
-
 int compareIO(pair<int, int> * p1, pair<int, int> * p2){
     return p1->first < p2->first;
 }
 
-//begin scheduler simulation
-int main(int argc, char **argv){
-	int opt, quant;
-	bool refoutv;
-	Scheduler * scheduler;
-	while ((opt = getopt (argc, argv, "vs:")) != -1) {
-		//instantiate a scheduler based on the -s option
-        if (opt == 's') {
-            if (optarg[0] == 'R' || optarg[0] == 'P') {
-                sscanf(optarg + 1, "%d", &quant);
-            } else {quant = 9999;}
-            if (optarg[0] == 'F'){
-            	scheduler = new FCFS_Scheduler(optarg[0]);
-            } else if (optarg[0] == 'L'){
-
-            } else if (optarg[0] == 'P'){
-
-            } else if (optarg[0] == 'R'){
-
-            } else if (optarg[0] == 'S'){
-
-            } else {
-            	cout << "Invalid argument " << optarg[0] << endl;
-            	exit(1);
-            }
-        }
-        if (opt == 'v'){refoutv = true;}
-    }
-
-    string filename = argv[optind];
-	string randfile = argv[optind+1];
-
-	EventList * events = new EventList();
-	vector<Process *> * allProcesses = new vector<Process *>();
-	vector<pair<int, int>*> * allIOs = new vector<pair<int, int>*>;
-
-	initialize(filename, randfile, events, scheduler, allProcesses);
-	int totalTime = start_simulation(events, scheduler, refoutv, allIOs);
-	print_proc_data(allProcesses, scheduler);
-
+void print_sum(vector<Process *> * allProcesses, vector<pair<int, int>*> * allIOs, int totalTime){
 	//computer some overall statistics
 	double cpuUtil, ioUtil, avgTurn, avgCW, throughput;
 	cpuUtil = ioUtil = avgTurn = avgCW = throughput = 0;
@@ -298,7 +254,50 @@ int main(int argc, char **argv){
     }
     ioUtil = ((double)ioUtil*100)/(double)totalTime;
 
-	print_sum(totalTime, cpuUtil, ioUtil, avgTurn, avgCW, throughput);
+	printf("SUM: %d %.2lf %.2lf %.2lf %.2lf %.3lf\n",
+           totalTime, cpuUtil, ioUtil, avgTurn, avgCW, throughput);
+}
+
+//begin scheduler simulation
+int main(int argc, char **argv){
+	int opt, quantum;
+	bool refoutv;
+	Scheduler * scheduler;
+	while ((opt = getopt (argc, argv, "vs:")) != -1) {
+		//instantiate a scheduler based on the -s option
+        if (opt == 's') {
+            if (optarg[0] == 'R' || optarg[0] == 'P') {
+                sscanf(optarg + 1, "%d", &quantum);
+            } else {quantum = 9999;}
+            if (optarg[0] == 'F'){
+            	scheduler = new FCFS_Scheduler(optarg[0]);
+            } else if (optarg[0] == 'L'){
+            	scheduler = new LCFS_Scheduler(optarg[0]);
+            } else if (optarg[0] == 'P'){
+
+            } else if (optarg[0] == 'R'){
+
+            } else if (optarg[0] == 'S'){
+            	scheduler = new SJF_Scheduler(optarg[0]);
+            } else {
+            	cout << "Invalid argument " << optarg[0] << endl;
+            	exit(1);
+            }
+        }
+        if (opt == 'v'){refoutv = true;}
+    }
+
+    string filename = argv[optind];
+	string randfile = argv[optind+1];
+
+	EventList * events = new EventList();
+	vector<Process *> * allProcesses = new vector<Process *>();
+	vector<pair<int, int>*> * allIOs = new vector<pair<int, int>*>;
+
+	initialize(filename, randfile, events, scheduler, allProcesses);
+	int totalTime = start_simulation(events, scheduler, refoutv, allIOs);
+	print_proc_data(allProcesses, scheduler);
+	print_sum(allProcesses, allIOs, totalTime);
 
 	return 0;
 }

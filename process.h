@@ -66,6 +66,8 @@ class Process {
 			this->PRIO = staticPrio;
 			this->dynamicPrio = staticPrio-1;
 			this->stateTimeStamp = AT;
+			this->CW = 0;
+			this->IT = 0;
 		}
 		void setPid(int pid){ this->pid = pid; }
 		void setArrivalTime(int AT){ this->AT = AT; }

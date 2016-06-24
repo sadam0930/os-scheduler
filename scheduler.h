@@ -87,17 +87,35 @@ class SJF_Scheduler: public Scheduler {
 	public:
 		SJF_Scheduler(char schedulerType) : Scheduler(schedulerType) {}
 
+		//sorted insert based on lowest remaining execution time
 		void putProcess(Process * process){
+			if(runQueue->isEmpty() || runQueue->head->remExTime > process->remExTime){
+				process->nextProcess = runQueue->head;
+				runQueue->head = process;
 
+				if(runQueue->isEmpty()){
+					runQueue->tail = runQueue->head;
+				}
+			} else {
+				Process * cur = runQueue->head;
+				while(cur->nextProcess && cur->nextProcess->remExTime <= process->remExTime){
+					cur = cur->nextProcess;
+				}
+				process->nextProcess = cur->nextProcess;
+				cur->nextProcess = process;
+			}
+			(runQueue->numProcesses)++;
 		}
 
-		//get process based on lowest remaining execution time
+		//get process from front of sorted run queue 
 		Process * getNextProcess(){
 			Process * returnProcess;
 			if(runQueue->numProcesses == 0){
 				returnProcess = nullptr;
 			} else {
-				
+				returnProcess = runQueue->head;
+				runQueue->head = runQueue->head->nextProcess;
+				(runQueue->numProcesses)--;
 			}
 			return returnProcess;
 		}

@@ -75,8 +75,13 @@ void printVerbose(bool enabled, Event * event){
 			cout << stateToString(event->process->currentState) << " -> ";
 		}
 		cout << transitionToString(event->getTransition());
-		if(event->getTransition() == TRANS_TO_RUN){
-			cout << "  cb=" << event->process->rCB << " ";
+		// if(event->getTransition() == TRANS_TO_RUN){
+		if((event->getTransition() == TRANS_TO_RUN) || (event->getTransition() == TRANS_TO_PREEMPT) ){
+			// if(event->getTransition() == TRANS_TO_RUN){
+				cout << "  cb=" << event->process->rCB << " ";
+			// } else {
+				// cout << "  cb=" << event->process->remCB << " ";
+			// }
 			cout << "rem=" << event->process->remExTime << " ";
 			cout << "prio=" << event->process->dynamicPrio;
 		}
@@ -113,13 +118,39 @@ int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv, ve
 
 				break;
 			case TRANS_TO_RUN:
-				curEvent->process->rCB = myrandom(curEvent->process->getCPUBurst());
-				if(curEvent->process->remExTime <= curEvent->process->rCB){
-					//next CPU cycle is last cycle for this process
-					curEvent->process->rCB = curEvent->process->remExTime;
-					events->putEvent((curTime + curEvent->process->rCB), curEvent->process, TRANS_TO_DONE);
+				if(scheduler->schedulerType == 'R' || scheduler->schedulerType == 'P'){
+					if(curEvent->process->remCB == 0){
+						//process was blocked, get new CPU Burst
+						curEvent->process->rCB = myrandom(curEvent->process->getCPUBurst());
+						curEvent->process->remCB = curEvent->process->rCB;
+					} else {
+						//process was preempted 
+						//CPU Burst remains the same
+					}
 				} else {
-					events->putEvent((curTime + curEvent->process->rCB), curEvent->process, TRANS_TO_BLOCK);
+					curEvent->process->rCB = myrandom(curEvent->process->getCPUBurst());
+				}
+				
+				if(curEvent->process->remExTime <= curEvent->process->rCB){
+					curEvent->process->rCB = curEvent->process->remExTime;
+					//next CPU cycle is last cycle for this process if it can complete with the quantum
+					if(curEvent->process->remExTime <= scheduler->quantum){
+						events->putEvent((curTime + curEvent->process->rCB), curEvent->process, TRANS_TO_DONE);	
+					} else {
+						events->putEvent((curTime + scheduler->quantum), curEvent->process, TRANS_TO_PREEMPT);
+					}
+				} else {
+					if(scheduler->schedulerType == 'R' || scheduler->schedulerType == 'P'){
+						if(curEvent->process->rCB > scheduler->quantum){
+							events->putEvent((curTime + scheduler->quantum), curEvent->process, TRANS_TO_PREEMPT);
+						} else {
+							curEvent->process->remCB = 0;
+							events->putEvent((curTime + curEvent->process->rCB), curEvent->process, TRANS_TO_BLOCK);
+						}
+					} else {
+						//schedulerType = FCFS || LCFS || SJF
+						events->putEvent((curTime + curEvent->process->rCB), curEvent->process, TRANS_TO_BLOCK);
+					}
 				}
 
 				printVerbose(refoutv, curEvent);
@@ -149,9 +180,16 @@ int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv, ve
 				break;
 			}
 			case TRANS_TO_PREEMPT:
+				curEvent->process->remExTime = curEvent->process->remExTime - scheduler->quantum;
+				curEvent->process->rCB = curEvent->process->rCB - scheduler->quantum;
+
 				printVerbose(refoutv, curEvent);
 				curEvent->process->currentState = READY;
 				curEvent->process->stateTimeStamp = curTime;
+				//free current running process
+				curRunningProcess = nullptr;
+				scheduler->putProcess(curEvent->process);
+				callScheduler = true;
 
 				break; 
 			case TRANS_TO_DONE:
@@ -190,9 +228,7 @@ void print_proc_data(vector<Process *> * allProcesses, Scheduler * scheduler){
 		case 'F': cout<<"FCFS"<<endl; break;
         case 'L': cout<<"LCFS"<<endl; break;
         case 'S': cout<<"SJF"<<endl; break;
-        case 'R':
-            // cout<<"RR "<<scheduler->getQuantum()<<endl;
-            break;
+        case 'R': cout<<"RR " << scheduler->quantum << endl; break;
         case 'P':
             // cout<<"PRIO "<<scheduler->getQuantum()<<endl;
             break;
@@ -270,15 +306,15 @@ int main(int argc, char **argv){
                 sscanf(optarg + 1, "%d", &quantum);
             } else {quantum = 9999;}
             if (optarg[0] == 'F'){
-            	scheduler = new FCFS_Scheduler(optarg[0]);
+            	scheduler = new FCFS_Scheduler(optarg[0], quantum);
             } else if (optarg[0] == 'L'){
-            	scheduler = new LCFS_Scheduler(optarg[0]);
+            	scheduler = new LCFS_Scheduler(optarg[0], quantum);
             } else if (optarg[0] == 'P'){
 
             } else if (optarg[0] == 'R'){
-
+            	scheduler = new RR_Scheduler(optarg[0], quantum);
             } else if (optarg[0] == 'S'){
-            	scheduler = new SJF_Scheduler(optarg[0]);
+            	scheduler = new SJF_Scheduler(optarg[0], quantum);
             } else {
             	cout << "Invalid argument " << optarg[0] << endl;
             	exit(1);

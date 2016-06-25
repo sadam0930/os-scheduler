@@ -21,7 +21,7 @@ std::string stateToString(processState ps){
 			str = "RUNNG";
 			break;
 		case BLOCKED:
-			str = "BLOCKED";
+			str = "BLOCK";
 			break;
 		case DONE:
 			str = "Done";
@@ -52,6 +52,7 @@ class Process {
 		int dynamicPrio;
 		int remExTime;
 		int rCB, rIO; //random CPU/IO Burst
+		int remCB; //remaining CPU Burst from peemption
 		
 		Process(){}
 		Process(int pid, int AT, int TC, int CB, int IO, int staticPrio){
@@ -66,8 +67,12 @@ class Process {
 			this->PRIO = staticPrio;
 			this->dynamicPrio = staticPrio-1;
 			this->stateTimeStamp = AT;
+			this->FT = 0;
+			this->TT = 0;
 			this->CW = 0;
 			this->IT = 0;
+			this->remCB = 0;
+			this->rCB = 0;
 		}
 		void setPid(int pid){ this->pid = pid; }
 		void setArrivalTime(int AT){ this->AT = AT; }

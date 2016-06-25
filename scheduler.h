@@ -4,10 +4,12 @@
 class Scheduler {		
 	public:
 		char schedulerType;
+		int quantum;
 		ProcessList * runQueue;
-		Scheduler(char schedulerType){
+		Scheduler(char schedulerType, int quantum){
 			this->runQueue = new ProcessList();
 			this->schedulerType = schedulerType;
+			this->quantum = quantum;
 		}
 		//implementation will differ based on the scheduling algorithm
 		virtual void putProcess(Process * process) =0;
@@ -17,10 +19,11 @@ class Scheduler {
 /**********************************************************
 differentiate how to getProcess between scheduler algorithms
 ***********************************************************/
+
 //First Come First Serve
 class FCFS_Scheduler: public Scheduler {
 	public:
-		FCFS_Scheduler(char schedulerType) : Scheduler(schedulerType) {}
+		FCFS_Scheduler(char schedulerType, int quantum) : Scheduler(schedulerType, quantum) {}
 		
 		//add Process to end of run queue
 		void putProcess(Process * process){
@@ -53,7 +56,7 @@ class FCFS_Scheduler: public Scheduler {
 //Last Come First Served
 class LCFS_Scheduler: public Scheduler {
 	public:
-		LCFS_Scheduler(char schedulerType) : Scheduler(schedulerType) {}
+		LCFS_Scheduler(char schedulerType, int quantum) : Scheduler(schedulerType, quantum) {}
 
 		//add Process to end of run queue
 		void putProcess(Process * process){
@@ -85,7 +88,7 @@ class LCFS_Scheduler: public Scheduler {
 //Shortest Job First
 class SJF_Scheduler: public Scheduler {
 	public:
-		SJF_Scheduler(char schedulerType) : Scheduler(schedulerType) {}
+		SJF_Scheduler(char schedulerType, int quantum) : Scheduler(schedulerType, quantum) {}
 
 		//sorted insert based on lowest remaining execution time
 		void putProcess(Process * process){
@@ -108,6 +111,37 @@ class SJF_Scheduler: public Scheduler {
 		}
 
 		//get process from front of sorted run queue 
+		Process * getNextProcess(){
+			Process * returnProcess;
+			if(runQueue->numProcesses == 0){
+				returnProcess = nullptr;
+			} else {
+				returnProcess = runQueue->head;
+				runQueue->head = runQueue->head->nextProcess;
+				(runQueue->numProcesses)--;
+			}
+			return returnProcess;
+		}
+};
+
+class RR_Scheduler: public Scheduler {
+	public:
+		RR_Scheduler(char schedulerType, int quantum) : Scheduler(schedulerType, quantum) {}
+
+		//add Process to end of run queue
+		void putProcess(Process * process){
+			if(runQueue->isEmpty()){
+				runQueue->head = process;
+				runQueue->tail = runQueue->head;
+			} else {
+				process->prevProcess = runQueue->tail;
+				runQueue->tail->nextProcess = process;
+				runQueue->tail = process;
+			}
+			(runQueue->numProcesses)++;
+		}
+
+		//get process from front of run queue
 		Process * getNextProcess(){
 			Process * returnProcess;
 			if(runQueue->numProcesses == 0){

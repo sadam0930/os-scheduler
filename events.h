@@ -22,7 +22,7 @@ std::string transitionToString(transitionState ts){
 			str = "BLOCK";
 			break;
 		case TRANS_TO_PREEMPT:
-			str = "PREEMPT";
+			str = "READY";
 			break;
 		case TRANS_TO_DONE:
 			str = "Done";

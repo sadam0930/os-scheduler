@@ -1,5 +1,7 @@
 #include <string>
 
+#define nullptr __null
+
 typedef enum processState {
 	CREATED,
 	READY,

@@ -6,14 +6,17 @@ class Scheduler {
 		char schedulerType;
 		int quantum;
 		ProcessList * runQueue;
+		ProcessList * expQueue; //only for PRIO
 		Scheduler(char schedulerType, int quantum){
 			this->runQueue = new ProcessList();
+			this->expQueue = new ProcessList();
 			this->schedulerType = schedulerType;
 			this->quantum = quantum;
 		}
 		//implementation will differ based on the scheduling algorithm
 		virtual void putProcess(Process * process) =0;
 		virtual Process * getNextProcess() =0;
+		virtual void putExpProcess(Process * process) =0; //only for PRIO
 };
 
 /**********************************************************
@@ -51,6 +54,8 @@ class FCFS_Scheduler: public Scheduler {
 			}
 			return returnProcess;
 		}
+
+		void putExpProcess(Process * process){};
 };
 
 //Last Come First Served
@@ -83,6 +88,8 @@ class LCFS_Scheduler: public Scheduler {
 			}
 			return returnProcess;
 		}
+
+		void putExpProcess(Process * process){};
 };
 
 //Shortest Job First
@@ -122,8 +129,11 @@ class SJF_Scheduler: public Scheduler {
 			}
 			return returnProcess;
 		}
+
+		void putExpProcess(Process * process){};
 };
 
+//Round Robin
 class RR_Scheduler: public Scheduler {
 	public:
 		RR_Scheduler(char schedulerType, int quantum) : Scheduler(schedulerType, quantum) {}
@@ -153,4 +163,67 @@ class RR_Scheduler: public Scheduler {
 			}
 			return returnProcess;
 		}
+
+		void putExpProcess(Process * process){};
+};
+
+//Priority
+class PRIO_Scheduler: public Scheduler {
+	public:
+		PRIO_Scheduler(char schedulerType, int quantum) : Scheduler(schedulerType, quantum) {
+		}
+
+		//inserted sort on dynamic priority
+		void putProcess(Process * process){
+			if(runQueue->isEmpty() || runQueue->head->dynamicPrio < process->dynamicPrio){
+				process->nextProcess = runQueue->head;
+				runQueue->head = process;
+
+				if(runQueue->isEmpty()){
+					runQueue->tail = runQueue->head;
+				}
+			} else {
+				Process * cur = runQueue->head;
+				while(cur->nextProcess && cur->nextProcess->dynamicPrio >= process->dynamicPrio){
+					cur = cur->nextProcess;
+				}
+				process->nextProcess = cur->nextProcess;
+				cur->nextProcess = process;
+			}
+			(runQueue->numProcesses)++;
+		}
+
+		//get process from front of sorted run queue
+		Process * getNextProcess(){
+			Process * returnProcess;
+			if(runQueue->numProcesses == 0){
+				returnProcess = nullptr;
+			} else {
+				returnProcess = runQueue->head;
+				runQueue->head = runQueue->head->nextProcess;
+				(runQueue->numProcesses)--;
+			}
+			return returnProcess;
+		}
+
+		//inserted sort by dynamic priority
+		void putExpProcess(Process * process){
+			if(expQueue->isEmpty() || expQueue->head->dynamicPrio < process->dynamicPrio){
+				process->nextProcess = expQueue->head;
+				expQueue->head = process;
+
+				if(expQueue->isEmpty()){
+					expQueue->tail = expQueue->head;
+				}
+			} else {
+				Process * cur = expQueue->head;
+				while(cur->nextProcess && cur->nextProcess->dynamicPrio >= process->dynamicPrio){
+					cur = cur->nextProcess;
+				}
+				process->nextProcess = cur->nextProcess;
+				cur->nextProcess = process;
+			}
+			(expQueue->numProcesses)++;
+		}
+
 };

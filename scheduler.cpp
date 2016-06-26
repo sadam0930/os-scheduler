@@ -75,13 +75,8 @@ void printVerbose(bool enabled, Event * event){
 			cout << stateToString(event->process->currentState) << " -> ";
 		}
 		cout << transitionToString(event->getTransition());
-		// if(event->getTransition() == TRANS_TO_RUN){
 		if((event->getTransition() == TRANS_TO_RUN) || (event->getTransition() == TRANS_TO_PREEMPT) ){
-			// if(event->getTransition() == TRANS_TO_RUN){
-				cout << "  cb=" << event->process->rCB << " ";
-			// } else {
-				// cout << "  cb=" << event->process->remCB << " ";
-			// }
+			cout << "  cb=" << event->process->rCB << " ";
 			cout << "rem=" << event->process->remExTime << " ";
 			cout << "prio=" << event->process->dynamicPrio;
 		}
@@ -173,6 +168,10 @@ int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv, ve
 				curEvent->process->currentState = BLOCKED;
 				curEvent->process->stateTimeStamp = curTime;
 				events->putEvent((curTime + curEvent->process->rIO), curEvent->process, TRANS_TO_READY);
+				if(scheduler->schedulerType == 'P'){
+					//reset the priority
+					curEvent->process->dynamicPrio = curEvent->process->PRIO - 1;
+				}
 				//free current running process
 				curRunningProcess = nullptr;
 				callScheduler = true;
@@ -184,11 +183,26 @@ int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv, ve
 				curEvent->process->rCB = curEvent->process->rCB - scheduler->quantum;
 
 				printVerbose(refoutv, curEvent);
+				
+				if(scheduler->schedulerType == 'P'){
+					//decay priority
+					curEvent->process->dynamicPrio = curEvent->process->dynamicPrio - 1;
+					if(curEvent->process->dynamicPrio < 0){
+						//if expired, reset the priority and add to expired queue
+						curEvent->process->dynamicPrio = curEvent->process->PRIO - 1;
+						scheduler->putExpProcess(curEvent->process);
+					} else {
+						scheduler->putProcess(curEvent->process);
+					}
+				} else {
+					//RR just goes here
+					scheduler->putProcess(curEvent->process);
+				}
+
 				curEvent->process->currentState = READY;
 				curEvent->process->stateTimeStamp = curTime;
 				//free current running process
 				curRunningProcess = nullptr;
-				scheduler->putProcess(curEvent->process);
 				callScheduler = true;
 
 				break; 
@@ -215,6 +229,16 @@ int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv, ve
 					curRunningProcess = scheduler->getNextProcess();
 					if(curRunningProcess){
 						events->putEvent(curTime, curRunningProcess, TRANS_TO_RUN);
+					} else if (scheduler->schedulerType == 'P'){
+						//if run queue is empty, check the expired queue for a ready process
+						scheduler->runQueue->head = scheduler->expQueue->head;
+						scheduler->runQueue->numProcesses = scheduler->expQueue->numProcesses;
+						scheduler->expQueue->head = nullptr;
+						scheduler->expQueue->numProcesses = 0;
+						curRunningProcess = scheduler->getNextProcess();
+						if(curRunningProcess){
+							events->putEvent(curTime, curRunningProcess, TRANS_TO_RUN);
+						}
 					}
 				}
 			}
@@ -225,13 +249,11 @@ int start_simulation(EventList * events, Scheduler * scheduler, bool refoutv, ve
 
 void print_proc_data(vector<Process *> * allProcesses, Scheduler * scheduler){
 	switch(scheduler->schedulerType){
-		case 'F': cout<<"FCFS"<<endl; break;
-        case 'L': cout<<"LCFS"<<endl; break;
-        case 'S': cout<<"SJF"<<endl; break;
-        case 'R': cout<<"RR " << scheduler->quantum << endl; break;
-        case 'P':
-            // cout<<"PRIO "<<scheduler->getQuantum()<<endl;
-            break;
+		case 'F': cout << "FCFS" << endl; break;
+        case 'L': cout << "LCFS" << endl; break;
+        case 'S': cout << "SJF" <<endl; break;
+        case 'R': cout << "RR " << scheduler->quantum << endl; break;
+        case 'P': cout << "PRIO " << scheduler->quantum << endl; break;
         default: break;
 	}
 
@@ -310,7 +332,7 @@ int main(int argc, char **argv){
             } else if (optarg[0] == 'L'){
             	scheduler = new LCFS_Scheduler(optarg[0], quantum);
             } else if (optarg[0] == 'P'){
-
+            	scheduler = new PRIO_Scheduler(optarg[0], quantum);
             } else if (optarg[0] == 'R'){
             	scheduler = new RR_Scheduler(optarg[0], quantum);
             } else if (optarg[0] == 'S'){

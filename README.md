@@ -4,7 +4,7 @@
 # To compile:
 `make`
 
-without makefile : g++ -Wall -o scheduler scheduler.cpp
+without makefile : g++ -std=c++0x -Wall -o scheduler scheduler.cpp
 
 # To run:
 `./runit.sh myoutput ./scheduler`

@@ -258,7 +258,7 @@ void print_proc_data(vector<Process *> * allProcesses, Scheduler * scheduler){
 	}
 
 	unsigned long size = allProcesses->size();
-	for (int i=0; i<size; i++) {
+	for (unsigned int i=0; i<size; i++) {
 		printf("%04d: %4d %4d %4d %4d %1d | %5d %5d %5d %5d\n",
                allProcesses->at(i)->getPid(),
                allProcesses->at(i)->getArrivalTime(),
@@ -284,7 +284,7 @@ void print_sum(vector<Process *> * allProcesses, vector<pair<int, int>*> * allIO
 	cpuUtil = ioUtil = avgTurn = avgCW = throughput = 0;
 	
 	unsigned long numProcesses = allProcesses->size();
-	for (int i=0; i < numProcesses; i++) {
+	for (unsigned int i=0; i < numProcesses; i++) {
         cpuUtil += allProcesses->at(i)->getTotalCPUTime();
         avgTurn += allProcesses->at(i)->TT;
         avgCW += allProcesses->at(i)->CW;
@@ -299,7 +299,7 @@ void print_sum(vector<Process *> * allProcesses, vector<pair<int, int>*> * allIO
     //first sort all IOs
     sort(allIOs->begin(), allIOs->end(), compareIO);
     int tempEnd = 0;
-    for (int j=0; j < allIOs->size(); j++) {
+    for (unsigned int j=0; j < allIOs->size(); j++) {
         if (allIOs->at(j)->first < tempEnd) {
             if (allIOs->at(j)->second > tempEnd) {
                 ioUtil += allIOs->at(j)->second - tempEnd;

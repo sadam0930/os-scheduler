@@ -12,7 +12,7 @@ using namespace std;
 
 // global
 vector<int> randvals; 
-int ofs = 0;
+unsigned int ofs = 0;
 int myrandom(int burst) { 
 	int ranNum = 1 + (randvals[ofs] % burst);
 	ofs++;
